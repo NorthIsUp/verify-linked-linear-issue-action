@@ -28954,17 +28954,20 @@ async function run() {
             throw new Error('No pull request number found in context, exiting.');
         }
         // Get all comments on the PR
+        // note this will only get ~30 comments at a time, but this should be enough
         const comments = await octokit.rest.issues.listComments({
             issue_number: context.payload.pull_request?.number,
             owner: context.repo.owner,
             repo: context.repo.repo
         });
-        core.notice(`Found ${comments.data.length} comments on the PR ...`);
+        core.debug(`Found ${comments.data.length} comments on the PR ...`);
         // Delete any previous comments made by this action
         const actionComments = comments.data.filter((comment) => comment.user?.type === 'Bot' && comment.body?.includes(missingMessage));
-        core.notice(`Found ${actionComments.length} comments to delete ...`);
+        if (actionComments.length > 0) {
+            core.notice(`Cleaning up ${actionComments.length} comments to delete ...`);
+        }
         for (const comment of actionComments) {
-            core.notice(`Deleting comment ${comment.id} ...`);
+            core.notice(`Cleaning up comment id: ${comment.id}`);
             await octokit.rest.issues.deleteComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -28975,7 +28978,7 @@ async function run() {
         const linearComment = comments.data.find((comment) => comment.performed_via_github_app?.slug === 'linear' &&
             comment.body?.includes('href="https://linear.app/'));
         if (linearComment) {
-            core.notice('Found Linear ticket.');
+            core.notice('Found Linear ticket');
         }
         else {
             const comment = await octokit.rest.issues.createComment({
@@ -28985,8 +28988,8 @@ async function run() {
                 repo: context.repo.repo,
                 body: missingMessage
             });
-            core.notice(`Created comment ${comment.data.id} ...`);
-            core.setFailed('No Linear ticket found.');
+            core.debug(`Created comment ${comment.data.id}`);
+            core.setFailed('No Linear ticket found');
         }
     }
     catch (error) {
