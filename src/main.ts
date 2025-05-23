@@ -43,14 +43,15 @@ export async function run(): Promise<void> {
 
     // Check for Linear ticket link
     const linearComment = comments.data.find(
-      (comment: IssueComment) =>
-        comment.performed_via_github_app?.slug === "linear" && comment.body?.includes('href="https://linear.app/'),
+      (comment: IssueComment) => comment.performed_via_github_app?.slug === "verify-linked-issue-bot",
     );
 
     if (linearComment) {
       core.notice("Found Linear ticket.");
     } else {
       await octokit.rest.issues.createComment({
+        slug: "verify-linked-issue-bot",
+        user: "verify-linked-issue-bot",
         issue_number: context.payload.pull_request?.number,
         owner: context.repo.owner,
         repo: context.repo.repo,
