@@ -13,6 +13,10 @@ export async function run(): Promise<void> {
     const token = process.env.GITHUB_TOKEN as string;
     const octokit = github.getOctokit(token);
     const context = github.context;
+
+    const missingMessage =
+      "No Linear ticket found for this pull request. Please link an issue in Linear by mentioning the ticket.";
+
     // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
     core.debug("Searching for Linear ticket link ...");
 
@@ -26,14 +30,16 @@ export async function run(): Promise<void> {
       owner: context.repo.owner,
       repo: context.repo.repo,
     });
+    core.notice(`Found ${comments.data.length} comments on the PR ...`);
 
     // Delete any previous comments made by this action
     const actionComments = comments.data.filter(
-      (comment: IssueComment) =>
-        comment.user?.type === "Bot" && comment.body?.includes("No Linear ticket found for this pull request"),
+      (comment: IssueComment) => comment.user?.type === "Bot" && comment.body?.includes(missingMessage),
     );
+    core.notice(`Found ${actionComments.length} comments to delete ...`);
 
     for (const comment of actionComments) {
+      core.notice(`Deleting comment ${comment.id} ...`);
       await octokit.rest.issues.deleteComment({
         owner: context.repo.owner,
         repo: context.repo.repo,
@@ -43,21 +49,21 @@ export async function run(): Promise<void> {
 
     // Check for Linear ticket link
     const linearComment = comments.data.find(
-      (comment: IssueComment) => comment.performed_via_github_app?.slug === "verify-linked-issue-bot",
+      (comment: IssueComment) =>
+        comment.performed_via_github_app?.slug === "linear" && comment.body?.includes('href="https://linear.app/'),
     );
 
     if (linearComment) {
       core.notice("Found Linear ticket.");
     } else {
-      await octokit.rest.issues.createComment({
+      const comment = await octokit.rest.issues.createComment({
         slug: "verify-linked-issue-bot",
-        user: "verify-linked-issue-bot",
         issue_number: context.payload.pull_request?.number,
         owner: context.repo.owner,
         repo: context.repo.repo,
-        body: "No Linear ticket found for this pull request. Please link an issue in Linear by mentioning the ticket.",
+        body: missingMessage,
       });
-      core.error("No Linear ticket found.");
+      core.notice(`Created comment ${comment.data.id} ...`);
       core.setFailed("No Linear ticket found.");
     }
   } catch (error) {
