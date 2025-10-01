@@ -3,18 +3,18 @@
 # If neither is present it fails the check and adds
 # a comment alerting users of this missing requirement.
 name: VerifyIssue
-
 on:
   pull_request:
     types: [edited, synchronize, opened, reopened]
   check_run:
-
 jobs:
   verify_linked_issue:
     runs-on: ubuntu-latest
     name: Ensure Pull Request has a linked issue.
     steps:
-      - name: Verify Linked Issue
-        uses: ZetaMinusOne/verify-linked-linear-issue-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Verify Linked Issue
+      uses: ZetaMinusOne/verify-linked-linear-issue-action@v0
+      with:
+        skip-users: 'dependabot[bot],renovate[bot]'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

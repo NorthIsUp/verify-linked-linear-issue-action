@@ -28947,12 +28947,29 @@ async function run() {
         const token = process.env.GITHUB_TOKEN;
         const octokit = github.getOctokit(token);
         const context = github.context;
+        // Get configuration from action inputs
+        const skipUsersInput = core.getInput('skip-users');
+        const skipUsers = skipUsersInput
+            ? skipUsersInput.split(',').map(u => u.trim())
+            : [];
         const missingMessage = 'No Linear ticket found for this pull request. Please link an issue in Linear by mentioning the ticket.';
-        // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        core.debug('Searching for Linear ticket link ...');
-        if (!context.payload.pull_request?.number) {
+        if (!context) {
+            throw new Error('No context found, exiting.');
+        }
+        else if (!context.payload.pull_request?.number) {
             throw new Error('No pull request number found in context, exiting.');
         }
+        else if (!context.payload.pull_request?.user?.login) {
+            throw new Error('No pull request user login found in context, exiting.');
+        }
+        core.debug('Searching for Linear ticket link ...');
+        const prAuthor = context.payload.pull_request.user.login;
+        // Check if user should be skipped
+        if (skipUsers.includes(prAuthor)) {
+            core.notice(`Skipping verification for user: ${prAuthor}`);
+            return;
+        }
+        core.debug(`Checking comments for verification for user: ${prAuthor}...`);
         // Get all comments on the PR
         // note this will only get ~30 comments at a time, but this should be enough
         const comments = await octokit.rest.issues.listComments({
@@ -28965,6 +28982,9 @@ async function run() {
         const actionComments = comments.data.filter((comment) => comment.user?.type === 'Bot' && comment.body?.includes(missingMessage));
         if (actionComments.length > 0) {
             core.notice(`Cleaning up ${actionComments.length} comments to delete ...`);
+        }
+        else {
+            core.debug(`No comments to delete ...`);
         }
         for (const comment of actionComments) {
             core.notice(`Cleaning up comment id: ${comment.id}`);

@@ -1,12 +1,15 @@
 name: 'Verify Linked Linear Issue'
 description: 'A GitHub action that verifies a pull request contains a reference to a Linear.app issue.'
 author: 'ZetaMinusOne'
-
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: 'heart'
   color: 'red'
-
+inputs:
+  skip-users:
+    description: 'Comma-separated list of GitHub usernames to skip (e.g., "dependabot[bot],renovate[bot]")'
+    required: false
+    default: 'dependabot[bot],renovate[bot]'
 runs:
   using: node20
   main: dist/index.js
